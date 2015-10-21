@@ -1,15 +1,75 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/css/reset.css">
-    <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.css">
-    <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
-  </head>
-  <body class="mixpanel-platform-body">
-    <h1>Hello, World!</h1>
-    <script>
-      // Run queries and display results here
-    </script>
-  </body>
+ <head>
+   <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/css/reset.css">
+   <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.css">
+   <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
+ </head>
+ <body class="mixpanel-platform-body">
+   <div class="mixpanel-platform-section">
+     <!--<div id="eventSelect" style="float: left;"></div>-->
+     <div id="by" class="mixpanel-platform-label" style="margin-left: 10px; display: none;">by</div>
+     
+     <div class="finish_rate" style="
+       font-size: 30px;
+       line-height: 30px; font-weight: 500; text-shadow: 0 1px 0 #fff; color: #5c617b ; 
+       display: block; vertical-align: top;
+       text-align: center;
+     ">Net New Subscribers</div>
+     <div id="eventSelect" style="float: left;"></div>
+     <div id="dateSelect" style="float: right;"></div>
+     <div style="clear: both;"></div>
+     <div id="graph"></div>
+   </div>
+   <div id="table"></div>
+   <script>
+     MP.api.ready(runReport);
+     function runReport() {
+       var dateSelector  = $('#dateSelect').MPDatepicker();
+       var eventGraph    = $('#graph').MPChart({chartType: 'line'});
+       var eventTable    = $('#table').MPTable({
+         showPercentages: true,
+         firstColHeader: 'Event'
+       });
+
+       function runQuery() {
+         var dateRange  = dateSelector.MPDatepicker('value');
+         var chartData = {};
+         chartData['Game Played - In-App Purchase'] = {};
+         
+         MP.api.segment('Game Played', undefined, dateRange).done(function(results) {
+           // Need a sorted date Array in order to calculate a rolling sum
+           var dateSeries = generateSortedDateSeries(results.json['Game Played']);
+
+           MP.api.segment('In-App Purchase', dateRange).done(function(results2) {
+             calculateSums(dateSeries, results, results2);
+             eventGraph.MPChart('setData', chartData);
+           });
+           
+         });
+         
+
+
+         function generateSortedDateSeries(dateCollection) {
+           var series = [];
+           for (key in dateCollection) {
+             series.push(key);
+           }
+           return series.sort();
+         }
+
+         function calculateSums(dateSeries, apiResults, apiResults2) {
+           var sum = 0;
+           dateSeries.forEach(function(date) {
+             sum = sum + apiResults.json['Game Played'][date] - apiResults2.json['In App-Purchase'][date];
+             chartData['Game Played - In App-Purchase'][date] = sum;
+           });
+         }
+       }
+       
+       runQuery();
+       dateSelector.on('change', runQuery);
+     }
+   </script>
+ </body>
 </html>
